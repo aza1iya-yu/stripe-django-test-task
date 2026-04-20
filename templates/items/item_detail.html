@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %} Buy Item {{ item.pk }} ({{ item }}) {% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% include 'items/item_card.html' with item=item link_to_detail=False %}
+    <a href="{% url 'item_list' %}" class="btn btn-secondary mt-3">← Back to list</a>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% load django_bootstrap5 %}
+
+{% load django_bootstrap5 %}
+
+<div class="card mb-3" style="width: 18rem;">
+    <div class="card-body">
+        <h5 class="card-title">
+            {% if link_to_detail %}
+                <a href="{% url 'item_detail' item.pk %}" class="text-decoration-none">{{ item.name }}</a>
+            {% else %}
+                {{ item.name }}
+            {% endif %}
+        </h5>
+        <p class="card-text">{{ item.description }}</p>
+        <p class="card-text fw-bold">{{ item.price }} ₽</p>
+        <button class="btn btn-primary buy-button" data-item-id="{{ item.pk }}">Купить</button>
+    </div>
+</div>
