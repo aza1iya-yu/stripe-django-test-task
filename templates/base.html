@@ -11,6 +11,26 @@
     <script src="https://js.stripe.com/dahlia/stripe.js"></script>
 </head>
 <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'item_list' %}">Items</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'cart' %}">
+                            Cart
+                            <span class="badge bg-secondary" id="cart-count">{{ cart_count }}</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
     {% block content %}
     {% endblock %}
 </body>
@@ -23,6 +43,42 @@
             button.addEventListener('click', function() {
                 var itemId = this.dataset.itemId;
                 fetch(`/buy/${itemId}`)
+                    .then(response => response.json())
+                    .then(session => window.location.href = session.session_url);
+            });
+        });
+
+        document.querySelectorAll('.add-order-button').forEach(function(button) {
+            button.addEventListener('click', function() {
+                var itemId = this.dataset.itemId;
+
+                var quantityInput = document.getElementById('quantity-' + itemId);
+                var quantity = quantityInput ? parseInt(quantityInput.value) : 1;
+                
+                var maxStock = parseInt(quantityInput.max);
+                if (quantity < 1) quantity = 1;
+                if (quantity > maxStock) quantity = maxStock;
+                
+                fetch(`/order/add/${itemId}/`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        quantity: quantity
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.total_quantity) {
+                        var cartCount = document.getElementById('cart-count');
+                        cartCount.textContent = data.total_quantity;
+                    }
+                });
+            });
+        });
+
+        document.querySelectorAll('.order-button').forEach(function(button) {
+            button.addEventListener('click', function() {
+                var orderId = this.dataset.orderId;
+                fetch(`/buy/order/${orderId}/`)
                     .then(response => response.json())
                     .then(session => window.location.href = session.session_url);
             });

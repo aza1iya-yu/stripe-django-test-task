@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %} The payment was successful {% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body text-center">                    
+                    <h1 class="card-title mb-3">The payment was successful!</h1>
+                                        
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'item_list' %}" class="btn btn-primary btn-lg">
+                            Continue shopping
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

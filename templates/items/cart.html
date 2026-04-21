@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load django_bootstrap5 %}
+
+{% block title %}My Order{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">My Order</h1>
+    
+    {% if items %}
+        <div class="row">
+            {% for order_item in items %}
+            <div class="col-md-4 mb-3">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ order_item.item.name }}</h5>
+                        <p class="card-text">{{ order_item.item.description }}</p>
+                        <p class="card-text fw-bold">
+                            {{ order_item.price }} × {{ order_item.quantity }}
+                        </p>
+                        <p class="card-text fw-bold">
+                            Subtotal: {{ order_item.subtotal_cost }} 
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <hr class="my-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h3>Total: {{ total_cost }} ₽</h3>
+            <button class="btn btn-primary btn-lg order-button" data-order-id="{{ order_id }}">
+                Pay for the order
+            </button>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            The cart is empty. <a href="{% url 'item_list' %}">Go to shopping</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
