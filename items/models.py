@@ -36,11 +36,17 @@ class Discount(models.Model):
         verbose_name="Скидка, %",
         validators=[MaxValueValidator(100)],
     )
+    code = models.CharField(max_length=100, verbose_name="Код для клиента")
 
     stripe_coupon_id = models.CharField(
         max_length=100,
         blank=True,
         verbose_name="ID купона Stripe",
+    )
+    stripe_promotion_code_id = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="ID промокода Stripe",
     )
 
     class Meta:
@@ -48,7 +54,7 @@ class Discount(models.Model):
         verbose_name_plural = "Скидки"
 
     def __str__(self):
-        return f"{self.name} -{self.amount}%"
+        return f"{self.code} -{self.amount}%"
 
     def get_stripe_discount_dict(self):
         return {"coupon": self.stripe_coupon_id}
@@ -60,6 +66,14 @@ class Discount(models.Model):
                 percent_off=self.amount,
             )
             self.stripe_coupon_id = coupon.id
+
+        if not self.stripe_promotion_code_id:
+            promotion_code = stripe.PromotionCode.create(
+                promotion={"type": "coupon", "coupon": coupon.id},
+                code=self.code,
+            )
+            self.stripe_promotion_code_id = promotion_code.id
+
         return super().save(*args, **kwargs)
 
 
@@ -74,7 +88,7 @@ class Tax(models.Model):
     stripe_tax_rate_id = models.CharField(
         max_length=100,
         blank=True,
-        verbose_name="ID купона Stripe",
+        verbose_name="ID налога Stripe",
     )
 
     class Meta:

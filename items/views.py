@@ -21,8 +21,9 @@ def get_stripe_line_item(
     description: str,
     price: Decimal,
     quantity: int = 1,
+    tax_rates: list[str] = None,
 ) -> dict:
-    return {
+    line_item = {
         "price_data": {
             "currency": "RUB",
             "product_data": {
@@ -33,6 +34,11 @@ def get_stripe_line_item(
         },
         "quantity": quantity,
     }
+
+    if tax_rates:
+        line_item["tax_rates"] = tax_rates
+
+    return line_item
 
 
 def payment_success(request: HttpRequest) -> HttpResponse:
@@ -148,19 +154,29 @@ def buy_order(request: HttpRequest, order_id: int) -> JsonResponse:
     items = order.order_items.all()
 
     if items.exists():
-        session = stripe.checkout.Session.create(
-            mode="payment",
-            line_items=[
+        session_params = {
+            "mode": "payment",
+            "line_items": [
                 get_stripe_line_item(
                     item.item.name,
                     item.item.description,
                     item.price,
                     item.quantity,
+                    [order.tax.stripe_tax_rate_id] if order.tax else None,
                 )
                 for item in items
             ],
-            success_url=request.build_absolute_uri(reverse("success")),
-        )
+            "success_url": request.build_absolute_uri(reverse("success")),
+        }
+
+        session_params["allow_promotion_codes"] = True
+
+        if order.discount:
+            session_params["discounts"] = [
+                {"promotion_code": order.discount.stripe_promotion_code_id}
+            ]
+
+        session = stripe.checkout.Session.create(**session_params)
         return JsonResponse({"session_id": session.id, "session_url": session.url})
     else:
         return JsonResponse({"error": "Order is empty"}, status=400)

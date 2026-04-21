@@ -18,15 +18,15 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
-    list_display = ("id", "created_at", "is_paid", "total_cost")
+    list_display = ("id", "created_at", "is_paid", "total_cost", "tax", "discount")
     list_filter = ("is_paid",)
 
 
 @admin.register(Discount)
 class DiscountAdmin(admin.ModelAdmin):
-    list_display = ("name", "amount", "stripe_coupon_id")
+    list_display = ("name", "amount", "stripe_coupon_id", "stripe_promotion_code_id")
     list_editable = ("amount",)
-    readonly_fields = ("stripe_coupon_id",)
+    readonly_fields = ("stripe_coupon_id", "stripe_promotion_code_id")
 
 
 @admin.register(Tax)
