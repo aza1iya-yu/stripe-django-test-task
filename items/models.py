@@ -1,4 +1,9 @@
+import stripe
+from django.conf import settings
+from django.core.validators import MaxValueValidator
 from django.db import models
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
 class Item(models.Model):
@@ -24,6 +29,75 @@ class Item(models.Model):
         return f"{self.name} - {self.price}"
 
 
+class Discount(models.Model):
+    name = models.CharField(max_length=40, verbose_name="Наименование")
+    amount = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Скидка, %",
+        validators=[MaxValueValidator(100)],
+    )
+
+    stripe_coupon_id = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="ID купона Stripe",
+    )
+
+    class Meta:
+        verbose_name = "Скидка"
+        verbose_name_plural = "Скидки"
+
+    def __str__(self):
+        return f"{self.name} -{self.amount}%"
+
+    def get_stripe_discount_dict(self):
+        return {"coupon": self.stripe_coupon_id}
+
+    def save(self, *args, **kwargs):
+        if not self.stripe_coupon_id:
+            coupon = stripe.Coupon.create(
+                name=self.name,
+                percent_off=self.amount,
+            )
+            self.stripe_coupon_id = coupon.id
+        return super().save(*args, **kwargs)
+
+
+class Tax(models.Model):
+    name = models.CharField(max_length=50, verbose_name="Наименование")
+    rate = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Налог, %",
+        validators=[MaxValueValidator(100)],
+    )
+
+    stripe_tax_rate_id = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="ID купона Stripe",
+    )
+
+    class Meta:
+        verbose_name = "Налог"
+        verbose_name_plural = "Налоги"
+
+    def __str__(self):
+        return f"{self.name} -{self.rate}%"
+
+    def get_stripe_tax_rate_dict(self):
+        return {"tax_rate": [self.stripe_tax_rate_id]}
+
+    def save(self, *args, **kwargs):
+        if not self.stripe_tax_rate_id:
+            tax_rate = stripe.TaxRate.create(
+                display_name=self.name,
+                percentage=self.rate,
+                inclusive=False,
+            )
+            self.stripe_tax_rate_id = tax_rate.id
+        return super().save(*args, **kwargs)
+
+
 class Order(models.Model):
     """
     Модель заказов
@@ -35,6 +109,21 @@ class Order(models.Model):
         auto_now_add=True, verbose_name="Дата создания заказа"
     )
     is_paid = models.BooleanField(default=False, verbose_name="Оплачен")
+
+    discount = models.ForeignKey(
+        Discount,
+        on_delete=models.SET_NULL,
+        related_name="orders",
+        blank=True,
+        null=True,
+    )
+    tax = models.ForeignKey(
+        Tax,
+        on_delete=models.SET_NULL,
+        related_name="orders",
+        blank=True,
+        null=True,
+    )
 
     class Meta:
         verbose_name = "Заказ"
