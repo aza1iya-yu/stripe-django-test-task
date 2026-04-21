@@ -1,17 +1,38 @@
 import json
+from decimal import Decimal
 
 import stripe
 from django.conf import settings
+from django.db.models import F
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 from django.views.generic import ListView
-from django.db.models import F
+
 from .models import Item, Order, OrderItem
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+def get_stripe_line_item(
+    name: str,
+    description: str,
+    price: Decimal,
+    quantity: int = 1,
+) -> dict:
+    return {
+        "price_data": {
+            "currency": "RUB",
+            "product_data": {
+                "name": name,
+                "description": description,
+            },
+            "unit_amount": int(round(price * 100)),
+        },
+        "quantity": quantity,
+    }
 
 
 def payment_success(request: HttpRequest) -> HttpResponse:
@@ -39,19 +60,7 @@ def buy_item(request: HttpRequest, item_id: int) -> JsonResponse:
     item = get_object_or_404(Item, pk=item_id)
     session = stripe.checkout.Session.create(
         mode="payment",
-        line_items=[
-            {
-                "price_data": {
-                    "currency": "RUB",
-                    "product_data": {
-                        "name": item.name,
-                        "description": item.description,
-                    },
-                    "unit_amount": int(round(item.price * 100)),
-                },
-                "quantity": 1,
-            }
-        ],
+        line_items=[get_stripe_line_item(item.name, item.description, item.price)],
         success_url=request.build_absolute_uri(reverse("success")),
     )
     return JsonResponse({"session_id": session.id, "session_url": session.url})
@@ -142,17 +151,12 @@ def buy_order(request: HttpRequest, order_id: int) -> JsonResponse:
         session = stripe.checkout.Session.create(
             mode="payment",
             line_items=[
-                {
-                    "price_data": {
-                        "currency": "RUB",
-                        "product_data": {
-                            "name": item.item.name,
-                            "description": item.item.description,
-                        },
-                        "unit_amount": int(round(item.price * 100)),
-                    },
-                    "quantity": item.quantity,
-                }
+                get_stripe_line_item(
+                    item.item.name,
+                    item.item.description,
+                    item.price,
+                    item.quantity,
+                )
                 for item in items
             ],
             success_url=request.build_absolute_uri(reverse("success")),
