@@ -23,10 +23,6 @@
 - Настройки через переменные окружения (`.env`).
 - Запуск через Docker (`Dockerfile`, `docker-compose.yml`).
 
-## Текущие ограничения
-
-- В Checkout сейчас используется фиксированная валюта (`RUB`) на уровне формирования line items.
-
 ## Стек
 
 - Python 3.12
@@ -90,7 +86,7 @@
 
 1. Создать `.env` (как выше).
 2. Собрать и запустить:
-   - `docker compose up --build`
+   - `docker compose up --build -d`
 3. Применить миграции:
    - `docker compose exec web python manage.py migrate`
 4. Создать суперпользователя:

@@ -1,9 +1,8 @@
-from django.conf import settings
 from django.urls import path
 from django.views.generic import ListView
 
 from . import views
-from .models import Item, OrderItem
+from .models import Item
 
 urlpatterns = [
     path(
@@ -12,7 +11,6 @@ urlpatterns = [
             template_name="item_list.html",
             model=Item,
             context_object_name="items",
-            extra_context={"stripe_public_key": settings.STRIPE_PUBLIC_KEY},
         ),
         name="item_list",
     ),

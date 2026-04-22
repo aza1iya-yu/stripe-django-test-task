@@ -13,8 +13,6 @@ from django.views.generic import ListView
 
 from .models import Item, Order, OrderItem
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
-
 
 def get_stripe_line_item(
     name: str,
@@ -22,6 +20,7 @@ def get_stripe_line_item(
     price: Decimal,
     quantity: int = 1,
     tax_rates: list[str] = None,
+    currency: str = None,
 ) -> dict:
     product_data = {"name": name}
     if description:
@@ -29,7 +28,7 @@ def get_stripe_line_item(
 
     line_item = {
         "price_data": {
-            "currency": "RUB",
+            "currency": currency if currency else "USD",
             "product_data": product_data,
             "unit_amount": int(round(price * 100)),
         },
@@ -65,14 +64,26 @@ def payment_success(request: HttpRequest) -> HttpResponse:
 @require_GET
 def buy_item(request: HttpRequest, item_id: int) -> JsonResponse:
     item = get_object_or_404(Item, pk=item_id)
+
+    order = Order.objects.create()
+    order_id = order.pk
+    request.session["order_id"] = order_id
+    request.session.modified = True
+    OrderItem.objects.create(order=order, item=item, quantity=1, price=item.price)
+
+    currency = item.currency
+    api_key = settings.STRIPE_KEYS[currency]["secret"]
+
     session = stripe.checkout.Session.create(
+        api_key=api_key,
         mode="payment",
         line_items=[
             get_stripe_line_item(
                 item.name,
                 item.description,
                 item.price,
-                tax_rates=[item.tax.stripe_tax_rate_id],
+                tax_rates=[item.tax.stripe_tax_rate_id] if item.tax else None,
+                currency=item.currency,
             )
         ],
         success_url=request.build_absolute_uri(reverse("success")),
@@ -184,7 +195,8 @@ def buy_order(request: HttpRequest, order_id: int) -> JsonResponse:
                 {"promotion_code": order.discount.stripe_promotion_code_id}
             ]
 
-        session = stripe.checkout.Session.create(**session_params)
+        api_key = settings.STRIPE_SECRET_KEY
+        session = stripe.checkout.Session.create(api_key=api_key, **session_params)
         return JsonResponse({"session_id": session.id, "session_url": session.url})
     else:
         return JsonResponse({"error": "Order is empty"}, status=400)

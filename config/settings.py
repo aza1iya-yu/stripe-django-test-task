@@ -76,7 +76,6 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "items.context_processors.stripe_settings",
                 "items.context_processors.cart_count",
             ],
         },
@@ -135,5 +134,16 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "static"
 
 # Stripe settings
+STRIPE_KEYS = {
+    "usd": {
+        "secret": os.getenv("STRIPE_SECRET_KEY_USD"),
+        "public": os.getenv("STRIPE_PUBLIC_KEY_USD"),
+    },
+    "eur": {
+        "secret": os.getenv("STRIPE_SECRET_KEY_EUR"),
+        "public": os.getenv("STRIPE_PUBLIC_KEY_EUR"),
+    },
+}
+
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")

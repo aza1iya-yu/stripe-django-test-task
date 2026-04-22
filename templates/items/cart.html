@@ -41,3 +41,15 @@
     {% endif %}
 </div>
 {% endblock %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {        
+        document.querySelectorAll('.order-button').forEach(function(button) {
+            button.addEventListener('click', function() {
+                var orderId = this.dataset.orderId;
+                fetch(`/buy/order/${orderId}/`)
+                    .then(response => response.json())
+                    .then(session => window.location.href = session.session_url);
+            });
+        });
+    });
+</script>

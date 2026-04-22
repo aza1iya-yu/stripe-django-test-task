@@ -96,7 +96,11 @@ class Tax(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.stripe_tax_rate_id:
+            currency = self.items.currency
+            api_key = settings.STRIPE_KEYS[currency]["secret"]
+
             tax_rate = stripe.TaxRate.create(
+                api_key=api_key,
                 display_name=self.name,
                 percentage=self.rate,
                 inclusive=False,
@@ -115,9 +119,19 @@ class Item(models.Model):
         - tax: Налог
     """
 
+    class CurrencyChoices(models.TextChoices):
+        USD = "usd", "USD"
+        EUR = "eur", "EUR"
+
     name = models.CharField(max_length=60, verbose_name="Наименование")
     description = models.TextField(blank=True, null=True, verbose_name="Описание")
 
+    currency = models.CharField(
+        max_length=3,
+        choices=CurrencyChoices.choices,
+        default=CurrencyChoices.USD,
+        verbose_name="Валюта,",
+    )
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена")
 
     stock = models.PositiveIntegerField(default=0, verbose_name="Остаток")

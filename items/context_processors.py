@@ -3,10 +3,6 @@ from django.conf import settings
 from .models import Order
 
 
-def stripe_settings(request):
-    return {"stripe_public_key": settings.STRIPE_PUBLIC_KEY}
-
-
 def cart_count(request):
     order_id = request.session.get("order_id")
 
