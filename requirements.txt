@@ -4,6 +4,7 @@ charset-normalizer==3.4.7
 Django==6.0.4
 django-bootstrap5==26.2
 django-debug-toolbar==6.3.0
+gunicorn==21.2.0
 idna==3.11
 python-dotenv==1.2.2
 requests==2.33.1
