@@ -23,13 +23,14 @@ def get_stripe_line_item(
     quantity: int = 1,
     tax_rates: list[str] = None,
 ) -> dict:
+    product_data = {"name": name}
+    if description:
+        product_data["description"] = description
+
     line_item = {
         "price_data": {
             "currency": "RUB",
-            "product_data": {
-                "name": name,
-                "description": description,
-            },
+            "product_data": product_data,
             "unit_amount": int(round(price * 100)),
         },
         "quantity": quantity,
@@ -66,7 +67,14 @@ def buy_item(request: HttpRequest, item_id: int) -> JsonResponse:
     item = get_object_or_404(Item, pk=item_id)
     session = stripe.checkout.Session.create(
         mode="payment",
-        line_items=[get_stripe_line_item(item.name, item.description, item.price)],
+        line_items=[
+            get_stripe_line_item(
+                item.name,
+                item.description,
+                item.price,
+                tax_rates=[item.tax.stripe_tax_rate_id],
+            )
+        ],
         success_url=request.build_absolute_uri(reverse("success")),
     )
     return JsonResponse({"session_id": session.id, "session_url": session.url})
@@ -162,7 +170,7 @@ def buy_order(request: HttpRequest, order_id: int) -> JsonResponse:
                     item.item.description,
                     item.price,
                     item.quantity,
-                    [order.tax.stripe_tax_rate_id] if order.tax else None,
+                    ([item.item.tax.stripe_tax_rate_id] if item.item.tax else None),
                 )
                 for item in items
             ],

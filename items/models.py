@@ -6,30 +6,16 @@ from django.db import models
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
 
-class Item(models.Model):
-    """
-    Модель товаров
-        - name: Наименование товара
-        - description: Описание товара
-        - price: Цена товара
-    """
-
-    name = models.CharField(max_length=60, verbose_name="Наименование")
-    description = models.TextField(blank=True, null=True, verbose_name="Описание")
-    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена")
-
-    stock = models.PositiveIntegerField(default=0, verbose_name="Остаток")
-
-    class Meta:
-        verbose_name = "Товар"
-        verbose_name_plural = "Товары"
-        ordering = ("name",)
-
-    def __str__(self):
-        return f"{self.name} - {self.price}"
-
-
 class Discount(models.Model):
+    """
+    Модель скидок
+        - name: Наименование скидки
+        - amount: Размер скидки в процентах
+        - code: Код для клиента
+        - stripe_coupon_id: ID купона
+        - stripe_promotion_code_id: ID промокода
+    """
+
     name = models.CharField(max_length=40, verbose_name="Наименование")
     amount = models.PositiveIntegerField(
         default=0,
@@ -78,6 +64,13 @@ class Discount(models.Model):
 
 
 class Tax(models.Model):
+    """
+    Модель налогов
+        - name: Наименование налога
+        - rate: Размер налога
+        - stripe_tax_rate_id: ID налога
+    """
+
     name = models.CharField(max_length=50, verbose_name="Наименование")
     rate = models.PositiveIntegerField(
         default=0,
@@ -112,11 +105,46 @@ class Tax(models.Model):
         return super().save(*args, **kwargs)
 
 
+class Item(models.Model):
+    """
+    Модель товаров
+        - name: Наименование товара
+        - description: Описание товара
+        - price: Цена товара в выбранной валюте
+        - stock: Остаток товара
+        - tax: Налог
+    """
+
+    name = models.CharField(max_length=60, verbose_name="Наименование")
+    description = models.TextField(blank=True, null=True, verbose_name="Описание")
+
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена")
+
+    stock = models.PositiveIntegerField(default=0, verbose_name="Остаток")
+
+    tax = models.ForeignKey(
+        Tax,
+        on_delete=models.SET_NULL,
+        related_name="items",
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        verbose_name = "Товар"
+        verbose_name_plural = "Товары"
+        ordering = ("name",)
+
+    def __str__(self):
+        return f"{self.name} - {self.price}"
+
+
 class Order(models.Model):
     """
     Модель заказов
         - created_at: Дата создания заказа
         - is_paid: Оплачен ли заказ, по умолчанию False
+        - discount: Скидка
     """
 
     created_at = models.DateTimeField(
@@ -126,13 +154,6 @@ class Order(models.Model):
 
     discount = models.ForeignKey(
         Discount,
-        on_delete=models.SET_NULL,
-        related_name="orders",
-        blank=True,
-        null=True,
-    )
-    tax = models.ForeignKey(
-        Tax,
         on_delete=models.SET_NULL,
         related_name="orders",
         blank=True,

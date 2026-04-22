@@ -5,7 +5,7 @@ from .models import Discount, Item, Order, OrderItem, Tax
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ("name", "description", "price", "stock")
+    list_display = ("name", "description", "price", "stock", "tax")
     search_fields = ("name", "description")
     list_editable = ("stock",)
 
@@ -18,7 +18,7 @@ class OrderItemInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     inlines = [OrderItemInline]
-    list_display = ("id", "created_at", "is_paid", "total_cost", "tax", "discount")
+    list_display = ("id", "created_at", "is_paid", "total_cost", "discount")
     list_filter = ("is_paid",)
 
 
