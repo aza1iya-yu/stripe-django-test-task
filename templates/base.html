@@ -42,7 +42,7 @@
         document.querySelectorAll('.buy-button').forEach(function(button) {
             button.addEventListener('click', function() {
                 var itemId = this.dataset.itemId;
-                fetch(`/buy/${itemId}`)
+                fetch(`/buy/${itemId}/`)
                     .then(response => response.json())
                     .then(session => window.location.href = session.session_url);
             });

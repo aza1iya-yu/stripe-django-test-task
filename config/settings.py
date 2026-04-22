@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "items",
     "django_bootstrap5",
-    "debug_toolbar",
 ]
 
 MIDDLEWARE = [
@@ -55,8 +54,12 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
+
+if DEBUG:
+    INSTALLED_APPS.append("debug_toolbar")
+    MIDDLEWARE.append("debug_toolbar.middleware.DebugToolbarMiddleware")
+    INTERNAL_IPS = os.getenv("INTERNAL_IPS").split(" ")
 
 ROOT_URLCONF = "config.urls"
 
@@ -130,5 +133,3 @@ STATIC_URL = "static/"
 # Stripe settings
 STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-
-INTERNAL_IPS = os.getenv("INTERNAL_IPS").split(" ")
