@@ -123,4 +123,4 @@
 ## Публикация
 
 - Repository: `https://github.com/aza1iya-yu/stripe-django-test-task`
-- Deploy: `ссылка на развернутое приложение>`
+- Deploy: `http://85.193.89.236/`
