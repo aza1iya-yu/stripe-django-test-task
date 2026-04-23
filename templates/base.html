@@ -1,16 +1,19 @@
 {% load django_bootstrap5 %}
+{% load static %}
 
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %} Items {% endblock %}</title>
-    {% bootstrap_css %}
-    {% bootstrap_javascript %}
-    <script src="https://js.stripe.com/dahlia/stripe.js"></script>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{% block title %} Items {% endblock %}</title>
+        {% bootstrap_css %}
+        {% bootstrap_javascript %}
+        <script src="https://js.stripe.com/dahlia/stripe.js"></script>
+        <script src="{% static 'js/cart.js' %}"></script>
 </head>
 <body>
+    {% csrf_token %}
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -32,6 +35,8 @@
         </div>
     </nav>
     {% block content %}
+    {% endblock %}
+    {% block extra_scripts %}
     {% endblock %}
 </body>
 </html>
