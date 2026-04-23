@@ -24,15 +24,25 @@ class Discount(models.Model):
     )
     code = models.CharField(max_length=100, verbose_name="Код для клиента")
 
-    stripe_coupon_id = models.CharField(
+    stripe_coupon_id_usd = models.CharField(
         max_length=100,
         blank=True,
-        verbose_name="ID купона Stripe",
+        verbose_name="ID USD купона Stripe",
     )
-    stripe_promotion_code_id = models.CharField(
+    stripe_promotion_code_id_usd = models.CharField(
         max_length=100,
         blank=True,
-        verbose_name="ID промокода Stripe",
+        verbose_name="ID USD промокода Stripe",
+    )
+    stripe_coupon_id_eur = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="ID EUR купона Stripe",
+    )
+    stripe_promotion_code_id_eur = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="ID EUR промокода Stripe",
     )
 
     class Meta:
@@ -42,23 +52,41 @@ class Discount(models.Model):
     def __str__(self):
         return f"{self.code} -{self.amount}%"
 
-    def get_stripe_discount_dict(self):
-        return {"coupon": self.stripe_coupon_id}
-
     def save(self, *args, **kwargs):
-        if not self.stripe_coupon_id:
+        api_key_eur = settings.STRIPE_KEYS["eur"]["secret"]
+        api_key_usd = settings.STRIPE_KEYS["usd"]["secret"]
+
+        if not self.stripe_coupon_id_eur:
             coupon = stripe.Coupon.create(
+                api_key=api_key_eur,
                 name=self.name,
                 percent_off=self.amount,
             )
-            self.stripe_coupon_id = coupon.id
+            self.stripe_coupon_id_eur = coupon.id
 
-        if not self.stripe_promotion_code_id:
+        if not self.stripe_promotion_code_id_eur:
             promotion_code = stripe.PromotionCode.create(
+                api_key=api_key_eur,
                 promotion={"type": "coupon", "coupon": coupon.id},
                 code=self.code,
             )
-            self.stripe_promotion_code_id = promotion_code.id
+            self.stripe_promotion_code_id_eur = promotion_code.id
+
+        if not self.stripe_coupon_id_usd:
+            coupon = stripe.Coupon.create(
+                api_key=api_key_usd,
+                name=self.name,
+                percent_off=self.amount,
+            )
+            self.stripe_coupon_id_usd = coupon.id
+
+        if not self.stripe_promotion_code_id_usd:
+            promotion_code = stripe.PromotionCode.create(
+                api_key=api_key_usd,
+                promotion={"type": "coupon", "coupon": coupon.id},
+                code=self.code,
+            )
+            self.stripe_promotion_code_id_usd = promotion_code.id
 
         return super().save(*args, **kwargs)
 
@@ -78,10 +106,15 @@ class Tax(models.Model):
         validators=[MaxValueValidator(100)],
     )
 
-    stripe_tax_rate_id = models.CharField(
+    stripe_tax_rate_id_usd = models.CharField(
         max_length=100,
         blank=True,
-        verbose_name="ID налога Stripe",
+        verbose_name="ID USD налога Stripe",
+    )
+    stripe_tax_rate_id_eur = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="ID EUR налога Stripe",
     )
 
     class Meta:
@@ -89,15 +122,11 @@ class Tax(models.Model):
         verbose_name_plural = "Налоги"
 
     def __str__(self):
-        return f"{self.name} -{self.rate}%"
-
-    def get_stripe_tax_rate_dict(self):
-        return {"tax_rate": [self.stripe_tax_rate_id]}
+        return f"{self.name} +{self.rate}%"
 
     def save(self, *args, **kwargs):
-        if not self.stripe_tax_rate_id:
-            currency = self.items.currency
-            api_key = settings.STRIPE_KEYS[currency]["secret"]
+        if not self.stripe_tax_rate_id_eur:
+            api_key = settings.STRIPE_KEYS["eur"]["secret"]
 
             tax_rate = stripe.TaxRate.create(
                 api_key=api_key,
@@ -105,7 +134,19 @@ class Tax(models.Model):
                 percentage=self.rate,
                 inclusive=False,
             )
-            self.stripe_tax_rate_id = tax_rate.id
+            self.stripe_tax_rate_id_eur = tax_rate.id
+
+        if not self.stripe_tax_rate_id_usd:
+            api_key = settings.STRIPE_KEYS["usd"]["secret"]
+
+            tax_rate = stripe.TaxRate.create(
+                api_key=api_key,
+                display_name=self.name,
+                percentage=self.rate,
+                inclusive=False,
+            )
+            self.stripe_tax_rate_id_usd = tax_rate.id
+
         return super().save(*args, **kwargs)
 
 
@@ -182,11 +223,22 @@ class Order(models.Model):
     def __str__(self):
         return f"Order №{self.pk} dated {self.created_at.strftime('%d.%m.%Y')}"
 
-    def total_cost(self):
-        return sum(item.subtotal_cost() for item in self.order_items.all())
+    def total_cost_usd(self):
+        return sum(
+            item.subtotal_cost()
+            for item in self.order_items.all()
+            if item.item.currency == "usd"
+        )
+
+    def total_cost_eur(self):
+        return sum(
+            item.subtotal_cost()
+            for item in self.order_items.all()
+            if item.item.currency == "eur"
+        )
 
     def total_quantity(self):
-        return sum(item.quantity for item in self.order_items.all())
+        return sum(item.quantity for item in self.order_items.filter(is_paid=False))
 
 
 class OrderItem(models.Model):
@@ -213,6 +265,8 @@ class OrderItem(models.Model):
 
     quantity = models.PositiveIntegerField(default=0, verbose_name="Количество")
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена")
+
+    is_paid = models.BooleanField(default=False, verbose_name="Оплачен")
 
     class Meta:
         verbose_name = "Позиция"
