@@ -1,71 +1,78 @@
 # Django + Stripe Test Project
 
-Тестовое задание: backend на Django с интеграцией Stripe Checkout для оплаты товаров, плюс расширения в виде заказа/корзины, скидок, налогов и Docker-запуска.
+Тестовое задание: backend на Django с интеграцией Stripe Checkout для оплаты товаров, плюс расширения в виде заказа/корзины, скидок, налогов, поддержки двух валют (EUR, USD) и Docker-запуска.
 
 ## Что реализовано
 
 ### Основное задание
 
-- Django-модель `Item` с базовыми полями товара.
+- Django-модель `Item` (товар, цена, валюта, остаток, налог).
 - `GET /buy/<item_id>/` — создание Stripe Checkout Session для одного товара.
-- `GET /item/<item_id>/` — HTML-страница товара с кнопкой оплаты.
-- JS-редирект на Stripe Checkout по `session_url` из backend.
+- `GET /item/<item_id>/` — HTML-страница карточки товара.
+- Редирект в Stripe Checkout по `session_url`, который возвращает backend.
 
 ### Дополнительно
 
 - Корзина и заказ:
-  - добавление товаров в заказ (`POST /order/add/<item_id>/`);
-  - просмотр корзины (`GET /cart/`);
-  - оплата заказа целиком (`GET /buy/order/<order_id>/`).
+  - добавление товара в заказ: `POST /cart/add/<item_id>/`;
+  - просмотр корзины: `GET /cart/`;
+  - оплата заказа: `GET /buy/order/<order_id>/`.
+- Разделение корзины по валютам (если в заказе есть и USD, и EUR).
 - Модели `Order` и `OrderItem`.
-- Модели `Discount` и `Tax` + передача в Stripe Checkout.
+- Модели `Discount` и `Tax` с хранением Stripe ID для USD и EUR.
+- Обновление статусов оплаты после `success` и списание остатков товара.
 - Django Admin для управления товарами, заказами, скидками и налогами.
-- Настройки через переменные окружения (`.env`).
-- Запуск через Docker (`Dockerfile`, `docker-compose.yml`).
+- Настройки через переменные окружения.
+- Docker-конфигурации для локальной разработки и production.
 
 ## Стек
 
 - Python 3.12
-- Django 6
-- Stripe Python SDK
+- Django 6.0.4
+- Stripe Python SDK (`stripe==15.0.1`)
 - django-bootstrap5
-- django-debug-toolbar
+- django-debug-toolbar (только при `DJANGO_DEBUG=True`)
 - SQLite (по умолчанию)
 - Docker / Docker Compose
+- Gunicorn + Nginx (в production-конфигурации)
 
 ## Модели
 
-- `Item`: товар, цена, остаток, налог.
+- `Item`: товар, описание, валюта (`usd`/`eur`), цена, остаток, налог.
 - `Order`: заказ, признак оплаты, скидка.
-- `OrderItem`: позиции заказа (товар, количество, цена).
-- `Discount`: скидка, stripe coupon/promotion code.
-- `Tax`: налог, stripe tax rate.
+- `OrderItem`: позиция заказа (товар, количество, цена, признак оплаты).
+- `Discount`: скидка с Stripe coupon/promotion code для USD/EUR.
+- `Tax`: налог с Stripe tax rate для USD/EUR.
 
-## API и страницы
+## Маршруты
 
 - `GET /` — список товаров.
 - `GET /item/<item_id>/` — карточка товара.
-- `GET /buy/<item_id>/` — создать Checkout Session для одного товара.
-- `POST /order/add/<item_id>/` — добавить товар в текущий заказ (сессия пользователя).
+- `GET /buy/<item_id>/` — checkout для одного товара.
+- `POST /cart/add/<item_id>/` — добавить товар в текущий заказ (в сессии пользователя).
 - `GET /cart/` — корзина/заказ.
-- `GET /buy/order/<order_id>/` — создать Checkout Session для заказа.
-- `GET /success/` — страница успешной оплаты.
+- `GET /buy/order/<order_id>/?currency=<usd|eur>` — checkout по заказу (можно для конкретной валюты).
+- `GET /success/?session_id=...` — страница успешной оплаты (обновляет состояние заказа).
 - `GET /admin/` — Django Admin.
 
 ## Переменные окружения
 
 Создайте `.env` по примеру `.env.example`.
 
-Минимально нужны:
+Обязательные:
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG`
-- `STRIPE_PUBLIC_KEY`
-- `STRIPE_SECRET_KEY`
+- `STRIPE_PUBLIC_KEY_USD`
+- `STRIPE_SECRET_KEY_USD`
+- `STRIPE_PUBLIC_KEY_EUR`
+- `STRIPE_SECRET_KEY_EUR`
 
-Для `debug-toolbar` в Docker:
+Дополнительно:
 
-- `INTERNAL_IPS`
+- `DJANGO_ALLOWED_HOSTS` (через запятую)
+- `CSRF_TRUSTED_ORIGINS` (через запятую)
+- `INTERNAL_IPS` (для debug toolbar в Docker)
 
 ## Локальный запуск (без Docker)
 
@@ -95,17 +102,25 @@
 Приложение: `http://127.0.0.1:8000`  
 Админка: `http://127.0.0.1:8000/admin`
 
-## Тестирование платежей Stripe
+## Запуск в Docker (prod)
 
-- Для оплаты в Checkout применяйте тестовые карты Stripe (например, `4242 4242 4242 4242`).
+Используется `docker-compose.prod.yml` (`web` на Gunicorn + `nginx`).
 
-## Debug Toolbar
+1. Создать `.env.prod` с теми же переменными окружения.
+2. Запустить: `docker compose -f docker-compose.prod.yml up --build -d`
 
-Toolbar используется только для локальной разработки/отладки.
+По умолчанию приложение доступно на порту `80`.
+
+## Тестирование Stripe
+
+Используйте тестовые карты Stripe (например, `4242 4242 4242 4242`).
+
+## Примечания
+
+- `debug-toolbar` включается только в debug-режиме.
+- При оплате заказа с товарами в разных валютах оплата производится отдельно по каждой валюте.
 
 ## Публикация
 
 - Repository: `https://github.com/aza1iya-yu/stripe-django-test-task`
 - Deploy: `ссылка на развернутое приложение>`
-- Admin credentials для проверки: `<логин/пароль>`
-
