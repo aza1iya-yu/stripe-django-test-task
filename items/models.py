@@ -3,8 +3,6 @@ from django.conf import settings
 from django.core.validators import MaxValueValidator
 from django.db import models
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
-
 
 class Discount(models.Model):
     """
