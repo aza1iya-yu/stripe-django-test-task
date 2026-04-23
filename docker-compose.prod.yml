@@ -12,13 +12,13 @@ services:
     env_file:
       - .env.prod
     volumes:
-      - static-data:/home/app/web/static
+      - static-data:/home/app/web/staticfiles
     restart: unless-stopped
 
   nginx:
     build: ./nginx
     volumes:
-      - static-data:/home/app/web/static
+      - static-data:/home/app/web/staticfiles
     ports:
       - 80:80
     depends_on:
