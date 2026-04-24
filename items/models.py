@@ -20,7 +20,7 @@ class Discount(models.Model):
         verbose_name="Скидка, %",
         validators=[MaxValueValidator(100)],
     )
-    code = models.CharField(max_length=100, verbose_name="Код для клиента")
+    code = models.CharField(max_length=100, unique=True, verbose_name="Код для клиента")
 
     stripe_coupon_id_usd = models.CharField(
         max_length=100,
@@ -51,40 +51,36 @@ class Discount(models.Model):
         return f"{self.code} -{self.amount}%"
 
     def save(self, *args, **kwargs):
-        api_key_eur = settings.STRIPE_KEYS["eur"]["secret"]
-        api_key_usd = settings.STRIPE_KEYS["usd"]["secret"]
+        for currency in ["eur", "usd"]:
+            api_key = settings.STRIPE_KEYS[currency]["secret"]
 
-        if not self.stripe_coupon_id_eur:
-            coupon = stripe.Coupon.create(
-                api_key=api_key_eur,
-                name=self.name,
-                percent_off=self.amount,
-            )
-            self.stripe_coupon_id_eur = coupon.id
-
-        if not self.stripe_promotion_code_id_eur:
-            promotion_code = stripe.PromotionCode.create(
-                api_key=api_key_eur,
-                promotion={"type": "coupon", "coupon": coupon.id},
+            existing_promotion_codes = stripe.PromotionCode.list(
+                api_key=api_key,
+                limit=100,
                 code=self.code,
             )
-            self.stripe_promotion_code_id_eur = promotion_code.id
+            promotion_code = None
+            for promo in existing_promotion_codes:
+                if promo.code == self.code:
+                    promotion_code = promo
+                    break
 
-        if not self.stripe_coupon_id_usd:
-            coupon = stripe.Coupon.create(
-                api_key=api_key_usd,
-                name=self.name,
-                percent_off=self.amount,
-            )
-            self.stripe_coupon_id_usd = coupon.id
+            if promotion_code:
+                coupon = promotion_code.promotion.coupon
+            else:
+                coupon = stripe.Coupon.create(
+                    api_key=api_key,
+                    name=self.name,
+                    percent_off=self.amount,
+                ).id
+                promotion_code = stripe.PromotionCode.create(
+                    api_key=api_key,
+                    promotion={"type": "coupon", "coupon": coupon},
+                    code=self.code,
+                )
 
-        if not self.stripe_promotion_code_id_usd:
-            promotion_code = stripe.PromotionCode.create(
-                api_key=api_key_usd,
-                promotion={"type": "coupon", "coupon": coupon.id},
-                code=self.code,
-            )
-            self.stripe_promotion_code_id_usd = promotion_code.id
+            setattr(self, f"stripe_coupon_id_{currency}", coupon)
+            setattr(self, f"stripe_promotion_code_id_{currency}", promotion_code.id)
 
         return super().save(*args, **kwargs)
 
